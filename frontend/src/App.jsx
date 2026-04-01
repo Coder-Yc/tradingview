@@ -3,6 +3,7 @@ import useMarketData from './hooks/useMarketData';
 import Chart from './components/Chart';
 import DrawingToolbar from './components/DrawingToolbar';
 import IndicatorPanel from './components/IndicatorPanel';
+import TemplatePanel from './components/TemplatePanel';
 
 const SYMBOLS = [
   { value: 'GC',  label: 'GC  · Gold' },
@@ -89,6 +90,17 @@ export default function App() {
 
         <IndicatorPanel indicators={indicators} setIndicators={setIndicators} />
 
+        <TemplatePanel
+          symbol={symbol} timeframe={timeframe}
+          indicators={indicators} showVP={showVP}
+          onLoad={(tpl) => {
+            if (tpl.symbol)     setSymbol(tpl.symbol);
+            if (tpl.timeframe)  setTimeframe(tpl.timeframe);
+            if (tpl.indicators) setIndicators(tpl.indicators);
+            if (tpl.showVP !== undefined) setShowVP(tpl.showVP);
+          }}
+        />
+
         <div style={{ width: 1, height: 20, background: '#30363d' }} />
 
         {lastCandle && (
@@ -142,6 +154,8 @@ export default function App() {
             showVP={showVP}
             onClearDrawings={clearDrawingsRef}
             indicators={indicators}
+            timeframe={timeframe}
+            symbol={symbol}
           />
         </div>
       </div>

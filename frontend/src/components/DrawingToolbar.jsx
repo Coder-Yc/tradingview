@@ -4,6 +4,7 @@ const TOOLS = [
   { id: 'trendline', label: '╱', title: 'Trend Line' },
   { id: 'rect',      label: '□', title: 'Rectangle' },
   { id: 'text',      label: 'T', title: 'Text' },
+  { id: 'vp',        label: 'VP', title: 'Fixed Range Volume Profile (drag to select range)' },
 ];
 
 export default function DrawingToolbar({ activeTool, setActiveTool, onClearDrawings }) {
