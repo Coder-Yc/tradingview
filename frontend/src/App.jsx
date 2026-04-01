@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import useMarketData from './hooks/useMarketData';
 import Chart from './components/Chart';
+import DrawingToolbar from './components/DrawingToolbar';
+import IndicatorPanel from './components/IndicatorPanel';
 
 const SYMBOLS = [
   { value: 'GC',  label: 'GC  · Gold' },
@@ -22,26 +24,39 @@ const STATUS_COLOR = {
 };
 
 const selectStyle = {
-  background:  '#161b22',
-  color:       '#c9d1d9',
-  border:      '1px solid #30363d',
-  borderRadius: 4,
-  padding:     '3px 8px',
-  fontSize:    12,
-  fontFamily:  'monospace',
-  cursor:      'pointer',
-  outline:     'none',
+  background: '#161b22', color: '#c9d1d9',
+  border: '1px solid #30363d', borderRadius: 4,
+  padding: '3px 8px', fontSize: 12,
+  fontFamily: 'monospace', cursor: 'pointer', outline: 'none',
 };
 
-export default function App() {
-  const [symbol,    setSymbol]    = useState('GC');
-  const [timeframe, setTimeframe] = useState('5m');
+const pillStyle = (active) => ({
+  background:   active ? '#1f6feb' : 'transparent',
+  color:        active ? '#e6edf3' : '#8b949e',
+  border:       `1px solid ${active ? '#1f6feb' : '#30363d'}`,
+  borderRadius: 4, padding: '2px 8px', fontSize: 11,
+  fontFamily: 'monospace', cursor: 'pointer',
+});
 
-  const { status, candles, bigTrades, symbolInfo, footprintRef, footprintVersion } =
+const DEFAULT_INDICATORS = [
+  { id: 'bigtrades', type: 'bigtrades', label: 'Big Trades', params: {}, enabled: true },
+  { id: 'ema-20', type: 'ema', label: 'EMA 20', params: { period: 20, color: '#f0a500' }, enabled: true },
+];
+
+export default function App() {
+  const [symbol,     setSymbol]     = useState('GC');
+  const [timeframe,  setTimeframe]  = useState('5m');
+  const [activeTool, setActiveTool] = useState('cursor');
+  const [showVP,     setShowVP]     = useState(false);
+  const [indicators, setIndicators] = useState(DEFAULT_INDICATORS);
+
+  const clearDrawingsRef = useRef(null);
+
+  const { status, candles, bigTrades, footprintRef, footprintVersion } =
     useMarketData({ symbol, timeframe });
 
-  const lastCandle = candles.at(-1);
-  const prevCandle = candles.at(-2);
+  const lastCandle  = candles.at(-1);
+  const prevCandle  = candles.at(-2);
   const priceChange = lastCandle && prevCandle ? lastCandle.close - prevCandle.close : 0;
   const pricePct    = prevCandle ? ((priceChange / prevCandle.close) * 100).toFixed(2) : '0.00';
   const priceColor  = priceChange >= 0 ? '#26a641' : '#f85149';
@@ -53,37 +68,29 @@ export default function App() {
       <div style={{
         flexShrink: 0, height: 44, background: '#161b22',
         borderBottom: '1px solid #30363d',
-        display: 'flex', alignItems: 'center', padding: '0 14px', gap: 12,
+        display: 'flex', alignItems: 'center', padding: '0 14px', gap: 10,
       }}>
 
-        {/* Symbol selector */}
         <select value={symbol} onChange={(e) => setSymbol(e.target.value)} style={selectStyle}>
           {SYMBOLS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
         </select>
 
-        {/* Timeframe pills */}
         <div style={{ display: 'flex', gap: 3 }}>
           {TIMEFRAMES.map((tf) => (
-            <button
-              key={tf}
-              onClick={() => setTimeframe(tf)}
-              style={{
-                background:   tf === timeframe ? '#1f6feb' : 'transparent',
-                color:        tf === timeframe ? '#e6edf3' : '#8b949e',
-                border:       `1px solid ${tf === timeframe ? '#1f6feb' : '#30363d'}`,
-                borderRadius: 4, padding: '2px 8px', fontSize: 11,
-                fontFamily: 'monospace', cursor: 'pointer',
-              }}
-            >
+            <button key={tf} onClick={() => setTimeframe(tf)} style={pillStyle(tf === timeframe)}>
               {tf}
             </button>
           ))}
         </div>
 
-        {/* Divider */}
+        <button onClick={() => setShowVP((v) => !v)} style={pillStyle(showVP)} title="Volume Profile">
+          VP
+        </button>
+
+        <IndicatorPanel indicators={indicators} setIndicators={setIndicators} />
+
         <div style={{ width: 1, height: 20, background: '#30363d' }} />
 
-        {/* Price display */}
         {lastCandle && (
           <>
             <span style={{ fontSize: 18, fontWeight: 700, color: priceColor, fontFamily: 'monospace' }}>
@@ -104,7 +111,6 @@ export default function App() {
           </>
         )}
 
-        {/* Connection status */}
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }}>
           <span style={{
             width: 7, height: 7, borderRadius: '50%',
@@ -118,14 +124,26 @@ export default function App() {
         </div>
       </div>
 
-      {/* ── Chart (full remaining height) ───────────────────────────────────── */}
-      <div style={{ flex: 1, minHeight: 0 }}>
-        <Chart
-          candles={candles}
-          bigTrades={bigTrades}
-          footprintRef={footprintRef}
-          footprintVersion={footprintVersion}
+      {/* ── Chart area ──────────────────────────────────────────────────────── */}
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>
+        <DrawingToolbar
+          activeTool={activeTool}
+          setActiveTool={setActiveTool}
+          onClearDrawings={() => clearDrawingsRef.current?.()}
         />
+        <div style={{ flex: 1, minHeight: 0 }}>
+          <Chart
+            candles={candles}
+            bigTrades={bigTrades}
+            footprintRef={footprintRef}
+            footprintVersion={footprintVersion}
+            activeTool={activeTool}
+            setActiveTool={setActiveTool}
+            showVP={showVP}
+            onClearDrawings={clearDrawingsRef}
+            indicators={indicators}
+          />
+        </div>
       </div>
     </div>
   );
